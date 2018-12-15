@@ -168,7 +168,7 @@ def get_random_choice(id_dict, music_dict, id_mtx, adj_mtx_probs, emission_mtx, 
     print(id_seq)
     print(int_seq)
     print(state_seq)
-    return state_seq
+    return state_seq, int_seq
 
 
 ##########################################
@@ -177,6 +177,24 @@ def get_random_choice(id_dict, music_dict, id_mtx, adj_mtx_probs, emission_mtx, 
 
 
 def write_emission_matrix(music_df, note_id_lst):
+
+    chord_intervals = [0]
+    time_lst = music_df['time']
+    int_lst = music_df['intervals']
+    for idx, time in enumerate(time_lst[:-1]):
+        if time_lst[idx+1]==0:
+            chord_intervals.append(int_lst[idx])
+            # elif time_lst[idx-1]==0:
+            #     chord_intervals.append(int_lst[idx])
+        else:
+            chord_intervals.append(0)
+    # chord_intervals.append(0)
+
+    print('chord intervals', len(chord_intervals), chord_intervals)
+    print('int_lst', len(int_lst), list(int_lst))
+
+    music_df['intervals'] = chord_intervals
+
 
     note_sums = []
     for note in note_id_lst:
@@ -247,7 +265,7 @@ def split_data(music_df):
 #####     WRITE TO MIDI FILE     #####
 ######################################
 
-def write_midi_file(midi_file, music_dict, note_seq):
+def write_midi_file(midi_file, music_dict, note_seq, int_seq):
 
     # Create MIDI object
     mf = MIDIFile(1)     # 1 track
@@ -269,25 +287,27 @@ def write_midi_file(midi_file, music_dict, note_seq):
 
         # pitch = music_dict['notes'][idx]
         pitch = note_seq[idx]
+        accompaniment = int_seq[idx]+pitch
 
         # print(music_dict['time'][idx])
 
 # uses approximately the original song's time
-        if music_dict['time'][idx] < 99:
-            # time = idx + music_dict['time'][idx]
-            time = temp_time + music_dict['time'][idx]*speed
-            temp_time += music_dict['time'][idx]*speed
+#         if music_dict['time'][idx] < 99:
+#             # time = idx + music_dict['time'][idx]
+#             time = temp_time + music_dict['time'][idx]*speed
+#             temp_time += music_dict['time'][idx]*speed
+#
+#         else:
+#             time = temp_time + 16*speed
+#             temp_time += time
 
-        else:
-            time = temp_time + 16*speed
-            temp_time += time
-
-        # time = idx
+        time = idx
 
 
 
 
         mf.addNote(track, channel, pitch, time, duration, volume)
+        mf.addNote(track, channel, accompaniment, time, duration, volume)
 
     # write to disk
     with open(midi_file, 'wb') as outf:
@@ -466,14 +486,14 @@ music_df = get_intervals_lst(music_df)
 adj_mtx, id_mtx, note_id_lst = write_adjacency_id_matrix(id_dict, weighted_edge_dict)
 adj_mtx_probs = get_adjacency_matrix_probabilities(adj_mtx, id_dict)
 emission_mtx, emission_id_mtx = write_emission_matrix(music_df, note_id_lst)
-note_seq = get_random_choice(id_dict, music_dict, id_mtx, adj_mtx_probs, emission_mtx, emission_id_mtx)
+note_seq, int_seq = get_random_choice(id_dict, music_dict, id_mtx, adj_mtx_probs, emission_mtx, emission_id_mtx)
 # music_dict_pred, id_dict_pred = parse_midi_file(midi_outfile)
 # music_df_pred = create_dataframe(music_dict_pred)
 # predictions = music_df_pred['notes']
 
 # X_train, X_test, y_train, y_test = split_data(music_df)
 # cross_validate(music_df['notes'], note_seq)
-write_midi_file(midi_outfile, music_dict, note_seq)
+write_midi_file(midi_outfile, music_dict, note_seq, int_seq)
 # play_song(midi_infile)
 play_song(midi_outfile)
 # plot_song_data(music_df)
