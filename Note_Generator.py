@@ -117,21 +117,58 @@ def get_adjacency_matrix_probabilities(adj_mtx, id_dict):
     adj_mtx_probs = adj_mtx/adj_mtx.sum(axis=0)
     return adj_mtx_probs
 
-def get_random_choice(id_dict, music_dict, id_mtx, adj_mtx_probs):
+def get_random_choice(id_dict, music_dict, id_mtx, adj_mtx_probs, emission_mtx, emission_id_mtx):
+    # id_seq = []
+    # note_seq = []
+    # # init_note = random.sample(list(id_dict.values()), 1)[0]
+    #
+    # # generate using Markov Model
+    # init_note = 0
+    # id_seq.append(init_note)
+    # while len(id_seq) < len(music_dict['notes']):
+    #     random_choice = np.random.choice(id_mtx[:, id_seq[-1]], p=adj_mtx_probs[:, id_seq[-1]])
+    #     choice_id = id_dict[int(random_choice)]
+    #     id_seq.append(choice_id)
+    # # print(id_dict)
+    # for ele in id_seq:
+    #     ids = list(id_dict.keys())
+    #     note_seq.append(ids[ele])
+
+
+    # generate using Hidden Markov Model
+
     id_seq = []
-    note_seq = []
-    # init_note = random.sample(list(id_dict.values()), 1)[0]
-    init_note = 0
-    id_seq.append(init_note)
-    while len(id_seq) < len(music_dict['notes']):
-        random_choice = np.random.choice(id_mtx[:, id_seq[-1]], p=adj_mtx_probs[:, id_seq[-1]])
-        choice_id = id_dict[int(random_choice)]
-        id_seq.append(choice_id)
-    # print(id_dict)
-    for ele in id_seq:
-        ids = list(id_dict.keys())
-        note_seq.append(ids[ele])
-    return note_seq
+    int_seq = []
+    state_seq = []
+
+
+    firststate = random.sample(list(id_dict.values()), 1)[0]
+    id_seq.append(int(firststate))
+
+    probabilities = emission_mtx[firststate,:]
+    print('probabilities', probabilities)
+    print(emission_mtx)
+    print(emission_id_mtx)
+    firstint = np.random.choice(emission_id_mtx[firststate,:], p=emission_mtx[firststate,:])
+    firststate = state = np.random.choice(id_mtx[:, firststate], p=adj_mtx_probs[:, firststate])
+    print('first_int', firstint)
+    int_seq.append(int(firstint))
+    state_seq.append(int(firststate))
+
+    while len(state_seq)<len(music_dict['notes']):
+        prevstate = id_seq[-1]
+        state = np.random.choice(id_mtx[:, prevstate], p=adj_mtx_probs[:, prevstate])
+        choice_id = id_dict[int(state)]
+        interval = np.random.choice(emission_id_mtx[choice_id,:], p=emission_mtx[choice_id,:])
+        state_seq.append(int(state))
+        id_seq.append(int(choice_id))
+        int_seq.append(int(interval))
+
+    # return note_seq
+    print(id_seq)
+    print(int_seq)
+    print(state_seq)
+    return state_seq
 
 
 ##########################################
@@ -148,6 +185,7 @@ def write_emission_matrix(music_df, note_id_lst):
     # print(note_sums)
 
     emission_mtx = np.zeros((len(music_df['notes'].value_counts()), len(music_df['intervals'].value_counts())))
+    emission_id_mtx = emission_mtx.copy()
 
     for idx, sum in enumerate(note_sums):
         emission_mtx[:,idx] = sum
@@ -156,12 +194,19 @@ def write_emission_matrix(music_df, note_id_lst):
     for note_idx, note in enumerate(note_id_lst):
         temp_df = music_df[music_df['notes']==note]
         # print(temp_df)
+        num_notes = temp_df.shape[0]
+        temp_idx_ct = 0
         for int_idx, interval in enumerate(interval_id_lst):
             # print(interval)
             int_df = temp_df[temp_df['intervals']==interval]
+            # print(int_df)
+            # print(int_df.shape[0])
+            # print(note_sums[note_idx])
             num_ints = int_df.shape[0]
+            temp_idx_ct += num_ints
 
-            emission_mtx[note_idx,int_idx]= num_ints/note_sums[note_idx]
+            emission_mtx[note_idx,int_idx] = num_ints/num_notes
+            emission_id_mtx[note_idx,int_idx] = interval
 
             # if len(temp_df['intervals']>0):
             #     print(temp_df['intervals'])
@@ -169,7 +214,9 @@ def write_emission_matrix(music_df, note_id_lst):
 
     # emission_mtx_probs = emission_mtx/adj_mtx.sum(axis=1)
 
-    return emission_mtx
+    # print(emission_id_mtx)
+
+    return emission_mtx, emission_id_mtx
 
 
 #######################################
@@ -418,18 +465,17 @@ music_df = create_dataframe(music_dict)
 music_df = get_intervals_lst(music_df)
 adj_mtx, id_mtx, note_id_lst = write_adjacency_id_matrix(id_dict, weighted_edge_dict)
 adj_mtx_probs = get_adjacency_matrix_probabilities(adj_mtx, id_dict)
-emission_mtx = write_emission_matrix(music_df, note_id_lst)
-print(emission_mtx)
-note_seq = get_random_choice(id_dict, music_dict, id_mtx, adj_mtx_probs)
-music_dict_pred, id_dict_pred = parse_midi_file(midi_outfile)
-music_df_pred = create_dataframe(music_dict_pred)
-predictions = music_df_pred['notes']
+emission_mtx, emission_id_mtx = write_emission_matrix(music_df, note_id_lst)
+note_seq = get_random_choice(id_dict, music_dict, id_mtx, adj_mtx_probs, emission_mtx, emission_id_mtx)
+# music_dict_pred, id_dict_pred = parse_midi_file(midi_outfile)
+# music_df_pred = create_dataframe(music_dict_pred)
+# predictions = music_df_pred['notes']
 
 # X_train, X_test, y_train, y_test = split_data(music_df)
 # cross_validate(music_df['notes'], note_seq)
 write_midi_file(midi_outfile, music_dict, note_seq)
 # play_song(midi_infile)
-# play_song(midi_outfile)
+play_song(midi_outfile)
 # plot_song_data(music_df)
 
 
