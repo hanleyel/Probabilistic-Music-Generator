@@ -18,8 +18,13 @@ import matplotlib.pyplot as plt
 #####     GLOBAL VARIABLES     #####
 ####################################
 
-midi_infile = 'midi_files/Payphone - Maroon 5 ft. Wiz Khalifa [MIDICollection.net].mid'
+# midi_infile = 'midi_files/Payphone - Maroon 5 ft. Wiz Khalifa [MIDICollection.net].mid'
 # midi_infile = 'mid/hisaishi_summer.mid'
+# midi_infile = 'midi_files/Someone Like You - Adele [MIDICollection.net].mid'
+# # midi_infile = 'midi_files/Rollin In The Deep - Adele [MIDICollection.net].mid'
+midi_infile = 'midi_files/River Flows In You - Yiruma [MIDICollection.net].mid'
+# midi_infile = 'midi_files/Whistle - Flo Rida [MIDICollection.net].mid'
+# midi_infile = 'midi_files/Fly - Ludovico Einaudi [MIDICollection.net].mid'
 midi_outfile = 'test-output.mid'
 
 
@@ -146,12 +151,12 @@ def get_random_choice(id_dict, music_dict, id_mtx, adj_mtx_probs, emission_mtx, 
     id_seq.append(int(firststate))
 
     probabilities = emission_mtx[firststate,:]
-    print('probabilities', probabilities)
-    print(emission_mtx)
-    print(emission_id_mtx)
+    # print('probabilities', probabilities)
+    # print(emission_mtx)
+    # print(emission_id_mtx)
     firstint = np.random.choice(emission_id_mtx[firststate,:], p=emission_mtx[firststate,:])
     firststate = state = np.random.choice(id_mtx[:, firststate], p=adj_mtx_probs[:, firststate])
-    print('first_int', firstint)
+    # print('first_int', firstint)
     int_seq.append(int(firstint))
     state_seq.append(int(firststate))
 
@@ -165,9 +170,9 @@ def get_random_choice(id_dict, music_dict, id_mtx, adj_mtx_probs, emission_mtx, 
         int_seq.append(int(interval))
 
     # return note_seq
-    print(id_seq)
-    print(int_seq)
-    print(state_seq)
+    # print(id_seq)
+    # print(int_seq)
+    # print(state_seq)
     return state_seq, int_seq
 
 
@@ -188,10 +193,13 @@ def write_emission_matrix(music_df, note_id_lst):
             #     chord_intervals.append(int_lst[idx])
         else:
             chord_intervals.append(0)
-    # chord_intervals.append(0)
+     # chord_intervals.append(0)
 
-    print('chord intervals', len(chord_intervals), chord_intervals)
-    print('int_lst', len(int_lst), list(int_lst))
+    for idx, time in enumerate(time_lst):
+        print(time_lst[idx], chord_intervals[idx], int_lst[idx])
+    print('chord intervals', chord_intervals)
+    print('int_lst', list(int_lst))
+    print('time_lst', list(time_lst))
 
     music_df['intervals'] = chord_intervals
 
@@ -200,13 +208,14 @@ def write_emission_matrix(music_df, note_id_lst):
     for note in note_id_lst:
         note = int(note)
         note_sums.append(music_df.iloc[note].sum())
-    # print(note_sums)
+    # print(len(note_sums))
+    # print(len(music_df['notes'].value_counts()))
 
     emission_mtx = np.zeros((len(music_df['notes'].value_counts()), len(music_df['intervals'].value_counts())))
     emission_id_mtx = emission_mtx.copy()
 
     for idx, sum in enumerate(note_sums):
-        emission_mtx[:,idx] = sum
+        emission_mtx[idx,:] = sum
 
     interval_id_lst = set(music_df['intervals'].unique())
     for note_idx, note in enumerate(note_id_lst):
@@ -235,6 +244,11 @@ def write_emission_matrix(music_df, note_id_lst):
     # print(emission_id_mtx)
 
     return emission_mtx, emission_id_mtx
+
+def write_emission_time_mtx():
+
+    time_mtx = np.zeros((len(music_df['notes'].value_counts()), len(music_df['time'].value_counts())))
+    time_id_mtx = time_mtx.copy()
 
 
 #######################################
@@ -279,9 +293,9 @@ def write_midi_file(midi_file, music_dict, note_seq, int_seq):
     channel = 0
     volume = 100
 
-    duration = 1
+    duration = 2
     temp_time = 0
-    speed = .035
+    speed = .05
 
     for idx, msg in enumerate(music_dict['notes']):
 
@@ -292,16 +306,16 @@ def write_midi_file(midi_file, music_dict, note_seq, int_seq):
         # print(music_dict['time'][idx])
 
 # uses approximately the original song's time
-#         if music_dict['time'][idx] < 99:
-#             # time = idx + music_dict['time'][idx]
-#             time = temp_time + music_dict['time'][idx]*speed
-#             temp_time += music_dict['time'][idx]*speed
-#
-#         else:
-#             time = temp_time + 16*speed
-#             temp_time += time
+        if music_dict['time'][idx] < 99:
+            # time = idx + music_dict['time'][idx]
+            time = temp_time + music_dict['time'][idx]*speed
+            temp_time += music_dict['time'][idx]*speed
 
-        time = idx
+        else:
+            time = temp_time + 16*speed
+            temp_time += time
+
+        # time = idx
 
 
 
@@ -426,10 +440,11 @@ def get_intervals_lst(music_df):
     interval_lst = []
     note_lst = list(music_df['notes'])
     for idx, ele in enumerate(note_lst):
-        if idx>0:
-            interval_lst.append(abs(note_lst[idx]-note_lst[idx-1]))
-        else:
-            interval_lst.append(0)
+        interval_lst.append(abs(note_lst[idx] - note_lst[idx - 1]))
+        # if idx>0:
+        #     interval_lst.append(abs(note_lst[idx]-note_lst[idx-1]))
+        # else:
+        #     interval_lst.append(0)
     music_df['intervals'] = interval_lst
 
     return music_df
