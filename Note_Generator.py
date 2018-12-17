@@ -10,6 +10,8 @@ from sklearn.metrics import mean_squared_error
 from math import sqrt
 import seaborn as sns
 import matplotlib.pyplot as plt
+import glob
+import csv
 
 ####################################
 #####     GLOBAL VARIABLES     #####
@@ -18,9 +20,9 @@ import matplotlib.pyplot as plt
 # midi_infile = 'midi_files/Payphone - Maroon 5 ft. Wiz Khalifa [MIDICollection.net].mid'
 # midi_infile = 'mid/hisaishi_summer.mid'
 # midi_infile = 'midi_files/mozart/mz_311_1.mid'
-midi_infile = 'midi_files/beeth/elise.mid'
+# midi_infile = 'midi_files/beeth/elise.mid'
 # midi_infile = 'midi_files/liszt/liz_rhap02.mid'
-# midi_infile = 'midi_files/Someone Like You - Adele [MIDICollection.net].mid'
+midi_infile = 'midi_files/Someone Like You - Adele [MIDICollection.net].mid'
 # # midi_infile = 'midi_files/Rollin In The Deep - Adele [MIDICollection.net].mid'
 # midi_infile = 'midi_files/River Flows In You - Yiruma [MIDICollection.net].mid'
 # midi_infile = 'midi_files/The Black Pearl - Pirates of the Carribean [MIDICollection.net].mid'
@@ -264,7 +266,7 @@ def write_midi_file(midi_file, music_dict, note_seq, int_seq, time_seq, vol_seq)
     channel = 0
     volume = 100
 
-    duration = 5
+    duration = 7
     temp_time = 0
     speed = .05
 
@@ -384,7 +386,7 @@ def cross_validate(y_test, y_preds):
     print('HMM Predictions: ', rms_preds)
     print('HMM Corrected Predictions: ', rms_corrected_preds)
 
-    return None
+    return rms_random, rms_corrected_random, rms_median, rms_corrected_median, rms_preds, rms_corrected_preds
 
 #############################
 #####     PLAY SONG     #####
@@ -464,6 +466,13 @@ def plot_song_data(music_df):
 #####     MAIN     #####
 ########################
 
+# configfiles = glob.glob("midi_files/**/*.mid", recursive=True)
+# results = []
+# count = 0
+# for file in configfiles:
+#     try:
+#         print(count)
+#         count += 1
 # load_midi_file(midi_infile)
 music_dict, id_dict = parse_midi_file(midi_infile)
 unweighted_edge_lst, weighted_edge_dict = get_edge_lst(music_dict)
@@ -475,18 +484,29 @@ emission_mtx, emission_id_mtx, time_mtx, time_id_mtx, volume_mtx, volume_id_mtx 
 # time_mtx, time_id_mtx = write_emission_time_mtx(music_df, note_id_lst)
 note_seq, int_seq, time_seq, vol_seq = get_random_choice(id_dict, music_dict, id_mtx, adj_mtx_probs, emission_mtx, emission_id_mtx,
                                                 time_mtx, time_id_mtx, volume_mtx, volume_id_mtx)
+
+
+# X_train, X_test, y_train, y_test = split_data(music_df)
+
+write_midi_file(midi_outfile, music_dict, note_seq, int_seq, time_seq, vol_seq)
 music_dict_pred, id_dict_pred = parse_midi_file(midi_outfile)
 music_df_pred = create_dataframe(music_dict_pred)
 predictions = music_df_pred['notes']
-
-# X_train, X_test, y_train, y_test = split_data(music_df)
-cross_validate(music_df['notes'], note_seq)
-write_midi_file(midi_outfile, music_dict, note_seq, int_seq, time_seq, vol_seq)
+rms_random, rms_corrected_random, rms_median, rms_corrected_median, rms_preds, rms_corrected_preds = cross_validate(music_df['notes'], note_seq)
 # play_song(midi_infile)
-# play_song(midi_outfile)
+play_song(midi_outfile)
 # plot_song_data(music_df)
 
-
+#         results.append((midi_infile, rms_random, rms_corrected_random, rms_median, rms_corrected_median, rms_preds, rms_corrected_preds))
+#         print(midi_infile, rms_random, rms_corrected_random, rms_median, rms_corrected_median, rms_preds, rms_corrected_preds)
+#     except:
+#         pass
+#
+# with open('results.csv', 'w') as outfile:
+#     csv_writer = csv.writer(outfile, delimiter=',')
+#     csv_writer.writerow(['midi_infile', 'rms_random', 'rms_corrected_random', 'rms_median', 'rms_corrected_median', 'rms_preds', 'rms_corrected_preds'])
+#     for ele in results:
+#         csv_writer.writerow([ele[0], ele[1], ele[2], ele[3], ele[4], ele[5], ele[6]])
 """
 C major 7th
 
