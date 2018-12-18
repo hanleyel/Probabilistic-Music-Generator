@@ -67,8 +67,6 @@ def write_music_dataframe(midi_file):
     # print(music_df)
     return music_df
 
-music_df = write_music_dataframe(midi_infile)
-
 
 ##############################################################
 #####     CALCULATE TRANSITION AND EMISSION MATRICES     #####
@@ -123,82 +121,7 @@ def write_matrices(music_df):
             volume_mtx[note_idx,velocity_idx] = num_velocities/num_notes
             volume_id_mtx[note_idx,velocity_idx] = velocity
 
-    # print(transition_mtx)
-    # print(transition_id_mtx)
-    # print(emission_mtx)
-    # print(emission_id_mtx)
-    # print(volume_mtx)
-    # print(volume_id_mtx)
-
     return transition_mtx, transition_id_mtx, emission_mtx, emission_id_mtx, time_mtx, time_id_mtx, volume_mtx, volume_id_mtx
-
-transition_mtx, transition_id_mtx, emission_mtx, emission_id_mtx, time_mtx, time_id_mtx, volume_mtx, volume_id_mtx = write_matrices(music_df)
-
-
-# def parse_midi_file(midi_file):
-#
-#     music_dict = {'id': [], 'notes': [], 'time': [], 'velocity': []}
-#     id_dict = {}
-#     mid = MidiFile(midi_file)
-#     count = 0
-#     id_count = 0
-#     for i, track in enumerate(mid.tracks):
-#         # print('Track {}: {}'.format(i, track.name))
-#         for message in track:
-#             # print(message)
-#             if message.type == 'note_on':
-#                 if message.channel == 0:
-#                     count += 1
-#                     music_dict['id'].append(count)
-#                     music_dict['notes'].append(message.note)
-#                     music_dict['time'].append(int(str(message.time)[:2]))
-#                     music_dict['velocity'].append(message.velocity)
-#                     if message.note not in id_dict.keys():
-#                         id_dict[message.note] = id_count
-#                         id_count += 1
-#
-#     return music_dict, id_dict
-
-
-###########################################
-#####     CREATE ADJACENCY MATRIX     #####
-###########################################
-
-# def get_edge_lst(music_dict):
-#
-#     unweighted_edge_lst = []
-#     for idx, msg in enumerate(music_dict['notes']):
-#         try:
-#             unweighted_edge_lst.append((music_dict['notes'][idx], music_dict['notes'][idx+1]))
-#         except:
-#             pass
-#
-#     weighted_edge_dict = {}
-#     for ele in unweighted_edge_lst:
-#         if ele not in weighted_edge_dict:
-#             weighted_edge_dict[ele] = 1
-#         else:
-#             weighted_edge_dict[ele] += 1
-#
-#     return unweighted_edge_lst, weighted_edge_dict
-#
-#
-# def write_adjacency_id_matrix(id_dict, weighted_edge_dict):
-#
-#     adj_mtx = np.zeros((len(id_dict), len(id_dict)))
-#     id_mtx = np.zeros((len(id_dict), len(id_dict)))
-#     # print(weighted_edge_dict)
-#     for idx, key in enumerate(weighted_edge_dict.keys()):
-#         adj_mtx[id_dict[key[0]], id_dict[key[1]]] = weighted_edge_dict[key]
-#         id_mtx[id_dict[key[0]], id_dict[key[1]]] = key[0]
-#
-#     note_id_lst = np.true_divide(id_mtx.sum(1),(id_mtx!=0).sum(1))
-#     return adj_mtx, id_mtx, note_id_lst
-#
-#
-# def get_adjacency_matrix_probabilities(adj_mtx, id_dict):
-#     adj_mtx_probs = adj_mtx/adj_mtx.sum(axis=0)
-#     return adj_mtx_probs
 
 
 def get_random_choice(emission_mtx, emission_id_mtx, time_mtx, time_id_mtx,
@@ -240,19 +163,6 @@ def get_random_choice(emission_mtx, emission_id_mtx, time_mtx, time_id_mtx,
         vol_seq.append(int(vol_state))
 
     return state_seq, int_seq, time_seq, vol_seq
-
-
-
-
-#######################################
-#####     WRITE TO DATA FRAME     #####
-#######################################
-
-# def create_dataframe(music_dict):
-#
-#     train_df = pd.DataFrame.from_dict(music_dict)
-#
-#     return train_df
 
 
 ###############################################
@@ -370,7 +280,6 @@ def cross_validate(y_test, y_preds):
         else:
             corrected_random.append(3)
 
-
     corrected_median = []
     for note in normalized_median_notes:
         if note == root:
@@ -421,12 +330,6 @@ def play_song(midi_file):
     else:
         midiout.open_virtual_port("My virtual output")
 
-    # note_on = [0x90, 60, 112] # channel 1, middle C, velocity 112
-    # note_off = [0x80, 60, 0]
-    # midiout.send_message(note_on)
-    # time.sleep(0.5)
-    # midiout.send_message(note_off)
-
     del midiout
 
     port = mido.open_output()
@@ -436,25 +339,6 @@ def play_song(midi_file):
         port.send(msg)
 
     return None
-
-
-##################################
-#####     PLOT SONG DATA     #####
-##################################
-
-# def get_intervals_lst(music_df):
-#
-#     interval_lst = []
-#     note_lst = list(music_df['notes'])
-#     for idx, ele in enumerate(note_lst):
-#         interval_lst.append(abs(note_lst[idx] - note_lst[idx - 1]))
-#         # if idx>0:
-#         #     interval_lst.append(abs(note_lst[idx]-note_lst[idx-1]))
-#         # else:
-#         #     interval_lst.append(0)
-#     music_df['intervals'] = interval_lst
-#
-#     return music_df
 
 def plot_song_data(music_df):
 
@@ -476,7 +360,6 @@ def plot_song_data(music_df):
     ax.set(xlabel='Intervals', ylabel='Frequency')
     plt.show()
 
-
     return None
 
 
@@ -484,25 +367,11 @@ def plot_song_data(music_df):
 #####     MAIN     #####
 ########################
 
-# music_dict, id_dict = parse_midi_file(midi_infile)
-# print('Music dict', music_dict)
-# print('id dict', id_dict)
-# unweighted_edge_lst, weighted_edge_dict = get_edge_lst(music_dict)
-# print('unweighted edge', unweighted_edge_lst)
-# print('weighted edge', weighted_edge_dict)
-# music_df = create_dataframe(music_dict)
-# print('music df', music_df)
-# music_df = get_intervals_lst(music_df)
-# adj_mtx, id_mtx, note_id_lst = write_adjacency_id_matrix(id_dict, weighted_edge_dict)
-# adj_mtx_probs = get_adjacency_matrix_probabilities(adj_mtx, id_dict)
-# emission_mtx, emission_id_mtx, time_mtx, time_id_mtx, volume_mtx, volume_id_mtx = write_emission_matrix(music_df, note_id_lst)
-# # time_mtx, time_id_mtx = write_emission_time_mtx(music_df, note_id_lst)
+music_df = write_music_dataframe(midi_infile)
+transition_mtx, transition_id_mtx, emission_mtx, emission_id_mtx, time_mtx, time_id_mtx, volume_mtx, volume_id_mtx = write_matrices(music_df)
 note_seq, int_seq, time_seq, vol_seq = get_random_choice(emission_mtx, emission_id_mtx,
-                                                time_mtx, time_id_mtx, volume_mtx, volume_id_mtx, transition_mtx, transition_id_mtx, music_df)
-#
-#
-# # X_train, X_test, y_train, y_test = split_data(music_df)
-#
+                                                        time_mtx, time_id_mtx, volume_mtx, volume_id_mtx, transition_mtx,
+                                                         transition_id_mtx, music_df)
 write_midi_file(midi_outfile, note_seq, int_seq, time_seq, vol_seq)
 # # music_dict_pred, id_dict_pred = parse_midi_file(midi_outfile)
 # # music_df_pred = create_dataframe(music_dict_pred)
