@@ -13,15 +13,18 @@ import matplotlib.pyplot as plt
 import glob
 from sklearn.preprocessing import LabelEncoder
 import csv
+import time
+
 
 ####################################
 #####     GLOBAL VARIABLES     #####
 ####################################
 
 configfiles = glob.glob("midi_files/**/*.mid", recursive=True)
-
 midi_infile = configfiles[2]
 midi_outfile = 'test-output.mid'
+speed = 0.025
+duration = .5
 
 ###################################
 #####     PARSE MIDI FILE     #####
@@ -64,6 +67,7 @@ def write_music_dataframe(midi_file):
     le = LabelEncoder()
     le.fit(music_df['note'])
     music_df['id'] = le.transform(music_df['note'])
+    music_df = music_df.sort_values(by='note')
     # print(music_df)
     return music_df
 
@@ -125,10 +129,9 @@ def write_matrices(music_df):
 
 
 def get_random_choice(emission_mtx, emission_id_mtx, time_mtx, time_id_mtx,
-                      volume_mtx, volume_id_mtx, transition_mtx, transition_id_mtx, music_df):
+                      volume_mtx, volume_id_mtx, transition_mtx, transition_id_mtx, music_df, interactive=False):
 
     id_dict = dict(zip(music_df['note'], music_df['id']))
-
     id_seq = []
     int_seq = []
     time_seq = []
@@ -149,9 +152,44 @@ def get_random_choice(emission_mtx, emission_id_mtx, time_mtx, time_id_mtx,
     vol_seq.append(int(firstvol))
     state_seq.append(int(firststate))
 
+    midiout = rtmidi.MidiOut()
+    available_ports = midiout.get_ports()
+    print('Available ports: ', available_ports)
+
+    if available_ports:
+        midiout.open_port(0)
+    else:
+        midiout.open_virtual_port("My virtual output")
+
     while len(state_seq)<len(music_df['note']):
         prevstate = id_seq[-1]
-        state = np.random.choice(transition_id_mtx[prevstate,:], p=transition_mtx[prevstate,:])
+
+
+        note_probs = transition_mtx[prevstate,:]
+        note_ids = transition_id_mtx[prevstate,:]
+
+
+        if interactive==False:
+
+            state = np.random.choice(transition_id_mtx[prevstate,:], p=transition_mtx[prevstate,:])
+
+        else:
+            for idx, prob in enumerate(note_probs):
+                if prob > 0:
+                    print(idx, note_ids[idx], prob, prevstate)
+
+
+            choice = input('Note choice: j (down), k (same), l (up)')
+            try:
+                if choice == 'l':
+                    state = np.random.choice(note_ids[idx:], p=note_probs[idx:]/note_probs[idx:].sum())
+                elif choice == 'j':
+                    state = np.random.choice(note_ids[:idx], p=note_probs[:idx]/note_probs[:idx].sum())
+            except:
+                state = prevstate
+
+            print(state)
+
         choice_id = id_dict[state]
         interval = np.random.choice(emission_id_mtx[choice_id,:], p=emission_mtx[choice_id,:])
         time_state = np.random.choice(time_id_mtx[choice_id,:], p=time_mtx[choice_id,:])
@@ -161,6 +199,14 @@ def get_random_choice(emission_mtx, emission_id_mtx, time_mtx, time_id_mtx,
         int_seq.append(int(interval))
         time_seq.append(int(time_state))
         vol_seq.append(int(vol_state))
+
+        note_on = [0x90, state, vol_state] # channel 1, middle C, velocity 112
+        note_off = [0x80, state, 0]
+        midiout.send_message(note_on)
+        time.sleep(duration)
+        midiout.send_message(note_off)
+
+    del midiout
 
     return state_seq, int_seq, time_seq, vol_seq
 
@@ -180,7 +226,7 @@ def split_data(music_df):
 #####     WRITE TO MIDI FILE     #####
 ######################################
 
-def write_midi_file(midi_file, note_seq, int_seq, time_seq, vol_seq):
+def write_midi_file(midi_file, note_seq, int_seq, time_seq, vol_seq, speed, duration):
 
     # Create MIDI object
     mf = MIDIFile(1)     # 1 track
@@ -192,11 +238,7 @@ def write_midi_file(midi_file, note_seq, int_seq, time_seq, vol_seq):
 
     # add some notes
     channel = 0
-    volume = 100
-
-    duration = 10
     temp_time = 0
-    speed = .025
 
     for idx, msg in enumerate(note_seq):
 
@@ -220,7 +262,9 @@ def write_midi_file(midi_file, note_seq, int_seq, time_seq, vol_seq):
         except:
             nexttime = time_seq[idx]*speed
         if nexttime <= 1:
+
             nexttime = 1
+
         # duration = nexttime
 
         mf.addNote(track, channel, pitch, time, duration, volume)
@@ -372,13 +416,15 @@ transition_mtx, transition_id_mtx, emission_mtx, emission_id_mtx, time_mtx, time
 note_seq, int_seq, time_seq, vol_seq = get_random_choice(emission_mtx, emission_id_mtx,
                                                         time_mtx, time_id_mtx, volume_mtx, volume_id_mtx, transition_mtx,
                                                          transition_id_mtx, music_df)
-write_midi_file(midi_outfile, note_seq, int_seq, time_seq, vol_seq)
+write_midi_file(midi_outfile, note_seq, int_seq, time_seq, vol_seq, speed, duration)
+# # play_song(midi_infile)
+# play_song(midi_outfile)
+
+
 # # music_dict_pred, id_dict_pred = parse_midi_file(midi_outfile)
 # # music_df_pred = create_dataframe(music_dict_pred)
 # # predictions = music_df_pred['notes']
 # # rms_random, rms_corrected_random, rms_median, rms_corrected_median, rms_preds, rms_corrected_preds = cross_validate(music_df['notes'], note_seq)
-# # play_song(midi_infile)
-play_song(midi_outfile)
 # # plot_song_data(music_df)
 
 """
